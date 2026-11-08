@@ -19,14 +19,13 @@ jobs:
       - name: Checkout builder repo
         uses: actions/checkout@v4
 
-      - name: Extract submitted Android project
+      - name: Extract Android project
         run: |
-          mkdir source
-          unzip -q project.zip -d source
-          if [ "$(find source -mindepth 1 -maxdepth 1 -type d | wc -l)" = "1" ] && [ "$(find source -mindepth 1 -maxdepth 1 -type f | wc -l)" = "0" ]; then
-            mv source/* project
-          else
-            mv source project
+          mkdir project
+          unzip -q project.zip -d project
+          if [ "$(find project -mindepth 1 -maxdepth 1 -type d | wc -l)" = "1" ] && [ "$(find project -mindepth 1 -maxdepth 1 -type f | wc -l)" = "0" ]; then
+            mv project/* temp_project
+            mv temp_project project
           fi
 
       - name: Set up Java
@@ -38,15 +37,17 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Build debug APK
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Build APK
         run: |
           cd project
-          if [ -f ./gradlew ]; then
-            chmod +x ./gradlew
-            ./gradlew assembleDebug --no-daemon
-          else
-            gradle assembleDebug --no-daemon
-          fi
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
