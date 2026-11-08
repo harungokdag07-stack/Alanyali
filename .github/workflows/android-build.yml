@@ -16,21 +16,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Extract Android project
         run: |
           mkdir project
           unzip -q project.zip -d project
-          if [ ! -f project/gradlew ]; then
-            WRAPPER=$(find project -name gradlew -type f | head -n 1)
-            if [ -n "$WRAPPER" ]; then
-              ROOT=$(dirname "$WRAPPER")
+          if [ ! -f project/build.gradle ] && [ ! -f project/build.gradle.kts ]; then
+            ROOT=$(find project -name build.gradle -o -name build.gradle.kts | head -n 1)
+            if [ -n "$ROOT" ]; then
+              ROOT=$(dirname "$ROOT")
               cp -a "$ROOT"/. project/
             fi
           fi
-          test -f project/gradlew
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -38,22 +37,21 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Install Gradle
+        uses: gradle/actions/setup-gradle@v4
         with:
-          packages: |
-            platform-tools
-            platforms;android-35
-            build-tools;35.0.0
+          gradle-version: '8.9'
 
-      - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses
+      - name: Android SDK licenses
+        run: |
+          SDK="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDK" --licenses || true
+          "$SDK" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Build APK
         run: |
           cd project
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          gradle assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
