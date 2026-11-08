@@ -16,17 +16,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout builder repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Extract Android project
         run: |
           mkdir project
           unzip -q project.zip -d project
-          if [ "$(find project -mindepth 1 -maxdepth 1 -type d | wc -l)" = "1" ] && [ "$(find project -mindepth 1 -maxdepth 1 -type f | wc -l)" = "0" ]; then
-            mv project/* temp_project
-            mv temp_project project
+          if [ ! -f project/gradlew ]; then
+            WRAPPER=$(find project -name gradlew -type f | head -n 1)
+            if [ -n "$WRAPPER" ]; then
+              ROOT=$(dirname "$WRAPPER")
+              cp -a "$ROOT"/. project/
+            fi
           fi
+          test -f project/gradlew
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -36,12 +40,14 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            platform-tools
+            platforms;android-35
+            build-tools;35.0.0
 
       - name: Accept Android SDK licenses
         run: yes | sdkmanager --licenses
-
-      - name: Install Android SDK packages
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Build APK
         run: |
